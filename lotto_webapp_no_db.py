@@ -4,8 +4,19 @@ import streamlit as st
 import random
 from collections import Counter
 import matplotlib.pyplot as plt
+import matplotlib
+import platform
 
-# 최신 회차를 빠르게 가져오기
+# ✅ 한글 폰트 설정 (환경별)
+if platform.system() == 'Windows':
+    matplotlib.rc('font', family='Malgun Gothic')
+elif platform.system() == 'Darwin':  # macOS
+    matplotlib.rc('font', family='AppleGothic')
+else:  # Linux (예: Streamlit Cloud)
+    matplotlib.rc('font', family='DejaVu Sans')  # 기본 영문 폰트로 처리
+matplotlib.rcParams['axes.unicode_minus'] = False
+
+# ✅ 최신 회차를 빠르게 가져오기
 def get_latest_draw_no_fast():
     try:
         url = "https://www.dhlottery.co.kr/gameResult.do?method=byWin"
@@ -16,7 +27,7 @@ def get_latest_draw_no_fast():
     except:
         return 1100
 
-# 단일 회차 번호 가져오기
+# ✅ 단일 회차 번호 가져오기
 def get_lotto_numbers(draw_no):
     url = f"https://www.dhlottery.co.kr/gameResult.do?method=byWin&drwNo={draw_no}"
     try:
@@ -26,7 +37,7 @@ def get_lotto_numbers(draw_no):
     except:
         return []
 
-# 회차 범위 번호 수집
+# ✅ 범위 내 번호 수집
 def collect_numbers_by_range(start, end):
     numbers = []
     for i in range(end, start - 1, -1):
@@ -35,7 +46,7 @@ def collect_numbers_by_range(start, end):
             numbers.extend(nums)
     return numbers
 
-# 조건 필터링된 추천 조합 생성
+# ✅ 조건 필터링된 추천 조합 생성
 def generate_recommendations(number_pool, combo_count=5):
     recommendations = []
     tries = 0
@@ -46,7 +57,7 @@ def generate_recommendations(number_pool, combo_count=5):
         tries += 1
     return recommendations
 
-# 조건 필터링
+# ✅ 조건 필터링
 def is_valid_combo(combo):
     even = sum(1 for n in combo if n % 2 == 0)
     total = sum(combo)
