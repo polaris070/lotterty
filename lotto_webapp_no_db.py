@@ -85,8 +85,9 @@ if st.button("🔮 추천 번호 생성"):
             title="출현 빈도 (최근 선택 회차 기준)",
             xaxis_title="로또 번호",
             yaxis_title="등장 횟수",
-            font=dict(family="Nanum Gothic, Arial", size=14)
+            font=dict(family="Arial, sans-serif", size=14)
         )
+        
         st.plotly_chart(fig)
 
         # ✅ 추천 번호 조합 출력
