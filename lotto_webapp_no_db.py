@@ -3,18 +3,7 @@ from bs4 import BeautifulSoup
 import streamlit as st
 import random
 from collections import Counter
-import matplotlib.pyplot as plt
-import matplotlib
-import platform
-
-# ✅ 한글 폰트 설정
-if platform.system() == 'Windows':
-    matplotlib.rc('font', family='Malgun Gothic')
-elif platform.system() == 'Darwin':
-    matplotlib.rc('font', family='AppleGothic')
-else:
-    matplotlib.rc('font', family='DejaVu Sans')
-matplotlib.rcParams['axes.unicode_minus'] = False
+import plotly.graph_objects as go
 
 # ✅ 최신 회차 번호 가져오기
 def get_latest_draw_no_fast():
@@ -27,7 +16,7 @@ def get_latest_draw_no_fast():
     except:
         return 1100
 
-# ✅ 회차별 로또 번호 가져오기
+# ✅ 단일 회차 번호 가져오기
 def get_lotto_numbers(draw_no):
     url = f"https://www.dhlottery.co.kr/gameResult.do?method=byWin&drwNo={draw_no}"
     try:
@@ -46,7 +35,7 @@ def collect_numbers_by_range(start, end):
             numbers.extend(nums)
     return numbers
 
-# ✅ 추천 조합 생성
+# ✅ 조건 필터링된 추천 조합 생성
 def generate_recommendations(number_pool, combo_count=5):
     recommendations = []
     tries = 0
@@ -57,7 +46,7 @@ def generate_recommendations(number_pool, combo_count=5):
         tries += 1
     return recommendations
 
-# ✅ 필터 조건
+# ✅ 필터 조건 함수
 def is_valid_combo(combo):
     even = sum(1 for n in combo if n % 2 == 0)
     total = sum(combo)
@@ -66,7 +55,7 @@ def is_valid_combo(combo):
 
 # ✅ Streamlit UI
 st.set_page_config(page_title="로또 추천", page_icon="🎰")
-st.title("🎰 로또 번호 추천기 (출현 빈도 시각화 포함)")
+st.title("🎰 로또 번호 추천기 (Plotly 시각화)")
 
 with st.spinner("최신 회차 확인 중..."):
     latest = get_latest_draw_no_fast()
@@ -87,16 +76,18 @@ if st.button("🔮 추천 번호 생성"):
         for i, (num, cnt) in enumerate(top_items, 1):
             st.write(f"**TOP {i}: {num}번 ({cnt}회 출현)**")
 
-        # ✅ 그래프 시각화
+        # ✅ Plotly 시각화
         labels = [str(n) for n, _ in top_items]
         values = [c for _, c in top_items]
 
-        fig, ax = plt.subplots()
-        ax.bar(labels, values)
-        ax.set_title("출현 빈도 (최근 선택 회차 기준)")
-        ax.set_xlabel("로또 번호")
-        ax.set_ylabel("등장 횟수")
-        st.pyplot(fig)
+        fig = go.Figure([go.Bar(x=labels, y=values)])
+        fig.update_layout(
+            title="출현 빈도 (최근 선택 회차 기준)",
+            xaxis_title="로또 번호",
+            yaxis_title="등장 횟수",
+            font=dict(family="Nanum Gothic, Arial", size=14)
+        )
+        st.plotly_chart(fig)
 
         # ✅ 추천 번호 조합 출력
         combos = generate_recommendations(top_nums, count)
