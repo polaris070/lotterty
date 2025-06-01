@@ -7,16 +7,16 @@ import matplotlib.pyplot as plt
 import matplotlib
 import platform
 
-# ✅ 한글 폰트 설정 (환경별)
+# ✅ 한글 폰트 설정
 if platform.system() == 'Windows':
     matplotlib.rc('font', family='Malgun Gothic')
-elif platform.system() == 'Darwin':  # macOS
+elif platform.system() == 'Darwin':
     matplotlib.rc('font', family='AppleGothic')
-else:  # Linux (예: Streamlit Cloud)
-    matplotlib.rc('font', family='DejaVu Sans')  # 기본 영문 폰트로 처리
+else:
+    matplotlib.rc('font', family='DejaVu Sans')
 matplotlib.rcParams['axes.unicode_minus'] = False
 
-# ✅ 최신 회차를 빠르게 가져오기
+# ✅ 최신 회차 번호 가져오기
 def get_latest_draw_no_fast():
     try:
         url = "https://www.dhlottery.co.kr/gameResult.do?method=byWin"
@@ -27,7 +27,7 @@ def get_latest_draw_no_fast():
     except:
         return 1100
 
-# ✅ 단일 회차 번호 가져오기
+# ✅ 회차별 로또 번호 가져오기
 def get_lotto_numbers(draw_no):
     url = f"https://www.dhlottery.co.kr/gameResult.do?method=byWin&drwNo={draw_no}"
     try:
@@ -46,7 +46,7 @@ def collect_numbers_by_range(start, end):
             numbers.extend(nums)
     return numbers
 
-# ✅ 조건 필터링된 추천 조합 생성
+# ✅ 추천 조합 생성
 def generate_recommendations(number_pool, combo_count=5):
     recommendations = []
     tries = 0
@@ -57,7 +57,7 @@ def generate_recommendations(number_pool, combo_count=5):
         tries += 1
     return recommendations
 
-# ✅ 조건 필터링
+# ✅ 필터 조건
 def is_valid_combo(combo):
     even = sum(1 for n in combo if n % 2 == 0)
     total = sum(combo)
@@ -80,13 +80,14 @@ if st.button("🔮 추천 번호 생성"):
     with st.spinner("로또 데이터 수집 중..."):
         collected = collect_numbers_by_range(start, end)
         freq = Counter(collected)
-        top_nums = [n for n, _ in freq.most_common(20)]
-
-        st.subheader("📊 출현 빈도 상위 20개 번호")
-        st.write(sorted(top_nums))
-
-        # ✅ 출현 빈도 시각화
         top_items = freq.most_common(20)
+        top_nums = [n for n, _ in top_items]
+
+        st.subheader("📊 출현 빈도 상위 20개 번호 (TOP 순위)")
+        for i, (num, cnt) in enumerate(top_items, 1):
+            st.write(f"**TOP {i}: {num}번 ({cnt}회 출현)**")
+
+        # ✅ 그래프 시각화
         labels = [str(n) for n, _ in top_items]
         values = [c for _, c in top_items]
 
@@ -97,9 +98,8 @@ if st.button("🔮 추천 번호 생성"):
         ax.set_ylabel("등장 횟수")
         st.pyplot(fig)
 
-        # 추천 번호 조합 생성
+        # ✅ 추천 번호 조합 출력
         combos = generate_recommendations(top_nums, count)
-
     st.success("✅ 추천 번호 조합:")
     for i, combo in enumerate(combos, 1):
         st.write(f"**{i}번 조합:** {combo}")
