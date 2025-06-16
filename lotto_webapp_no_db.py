@@ -5,6 +5,7 @@ import streamlit as st
 import random
 from collections import Counter
 import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
 DB_FILE = "lotto_cache.db"
 
@@ -15,7 +16,8 @@ def init_db():
     cur.execute("""
         CREATE TABLE IF NOT EXISTS cache (
             key TEXT PRIMARY KEY,
-            value INTEGER
+            value INTEGER,
+            updated_at TEXT
         )
     """)
     conn.commit()
@@ -23,22 +25,29 @@ def init_db():
 
 # ✅ 최신 회차 캐시에 저장
 def save_latest_draw_no(latest):
+    now = datetime.now().isoformat()
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", ('latest_draw_no', latest))
+    cur.execute("INSERT OR REPLACE INTO cache (key, value, updated_at) VALUES (?, ?, ?)", 
+                ('latest_draw_no', latest, now))
     conn.commit()
     conn.close()
 
-# ✅ 최신 회차 캐시에서 가져오기
+# ✅ 캐시 불러오기
 def load_latest_draw_no():
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("SELECT value FROM cache WHERE key = ?", ('latest_draw_no',))
+    cur.execute("SELECT value, updated_at FROM cache WHERE key = ?", ('latest_draw_no',))
     row = cur.fetchone()
     conn.close()
-    return row[0] if row else 0
+    if row:
+        value, updated_at = row
+        updated_at_dt = datetime.fromisoformat(updated_at) if updated_at else None
+        return value, updated_at_dt
+    else:
+        return 0, None
 
-# ✅ API 이진 탐색으로 최신 회차 찾기
+# ✅ API 이진 탐색
 def get_latest_draw_no_api():
     low = 1
     high = 1200
@@ -96,24 +105,36 @@ def is_valid_combo(combo):
 
 # ✅ Streamlit UI
 init_db()
+st.set_page_config(page_title="로또 추천 (자동 최신 회차)", page_icon="🎰")
+st.title("🎰 Lotto Number Recommender (Auto Update Latest Draw)")
 
-st.set_page_config(page_title="로또 추천 (DB 캐시)", page_icon="🎰")
-st.title("🎰 Lotto Number Recommender (DB Cache + API Refresh)")
+# ✅ 최신 회차 자동 갱신 로직
+latest_cached, updated_at = load_latest_draw_no()
 
-# 캐시된 최신 회차 불러오기
-latest_cached = load_latest_draw_no()
+need_update = False
+if updated_at is None:
+    need_update = True
+elif datetime.now() - updated_at > timedelta(days=7):
+    need_update = True
 
-# 최신 회차 갱신 버튼
-if st.button("🔄 최신 회차 갱신 (API 탐색)"):
-    with st.spinner("Fetching latest draw number from API..."):
+if need_update:
+    with st.spinner("Auto-updating latest draw number..."):
         latest = get_latest_draw_no_api()
         save_latest_draw_no(latest)
-    st.success(f"Latest draw number updated: **{latest}**")
+    st.success(f"Latest draw number auto-updated: **{latest}**")
+    latest_cached = latest
+else:
+    st.info(f"Current cached latest draw number: **{latest_cached}** (updated at {updated_at.strftime('%Y-%m-%d')})")
+
+# ✅ 수동 최신 회차 갱신 버튼
+if st.button("🔄 Manually refresh latest draw number"):
+    with st.spinner("Refreshing via API..."):
+        latest = get_latest_draw_no_api()
+        save_latest_draw_no(latest)
+    st.success(f"Latest draw number refreshed: **{latest}**")
     latest_cached = latest
 
-st.info(f"Current cached latest draw number: **{latest_cached}**")
-
-# 사용자 입력
+# ✅ 사용자 입력
 start = st.number_input("Start draw number", 1, latest_cached - 1, latest_cached - 20)
 end = st.number_input("End draw number", start, latest_cached, latest_cached)
 count = st.slider("Number of combinations to recommend", 1, 10, 5)
@@ -129,11 +150,7 @@ if st.button("🔮 Generate recommendations"):
         for i, (num, cnt) in enumerate(top_items, 1):
             st.write(f"**TOP {i}: Number {num} ({cnt} times)**")
 
-        # Plotly 시각화
-        labels = [str(n) for n, _ in top_items]
-        values = [c for _, c in top_items]
-
-        fig = go.Figure([go.Bar(x=labels, y=values)])
+        fig = go.Figure([go.Bar(x=[str(n) for n, _ in top_items], y=[c for _, c in top_items])])
         fig.update_layout(
             title="Frequency of Winning Numbers (Selected Rounds)",
             xaxis_title="Lotto Number",
@@ -142,7 +159,6 @@ if st.button("🔮 Generate recommendations"):
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        # 추천 번호 출력
         combos = generate_recommendations(top_nums, count)
     st.success("✅ Recommended Lotto Combinations:")
     for i, combo in enumerate(combos, 1):
